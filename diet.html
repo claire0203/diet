@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko" class="t-light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>칼로리 계산기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script>
+  // 첫 화면 깜빡임 방지: 저장된 테마 또는 시스템 설정을 먼저 적용
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('kcal-calc-theme'); } catch (e) {}
+    if (t !== 'dark' && t !== 'light') {
+      try { t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) { t = 'light'; }
+    }
+    document.documentElement.className = 't-' + t;
+  })();
+</script>
+<style>
+  .t-light{--bg:#F9F8FC;--ink:#24272E;--sub:#6D6873;--line:#E8E5F1;--uline:#D2CDE3;--bar:#EEEBF5;--kcal:#3A6195;--dday:#6F55A8;--warn:#A8455E;--c1:#BFD6F1;--c2:#CDBEEB;--c3:#E9E3F5;--selbg:#D3E3F6;--selbd:#A8C5E8;--selfg:#1F3A5C;--selsub:#3D5B80;--unbd:#DCD7EC;color-scheme:light}
+  .t-dark{--bg:#17161D;--ink:#ECEAF3;--sub:#A7A2B4;--line:#2D2A39;--uline:#433E57;--bar:#27243A;--kcal:#A3C1EE;--dday:#C7B4F2;--warn:#EFA0B4;--c1:#7097CC;--c2:#9B85D1;--c3:#4E4770;--selbg:#2B3D5B;--selbd:#4C6C9B;--selfg:#E1ECFA;--selsub:#AFC6E6;--unbd:#3A3650;color-scheme:dark}
+
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg)}
+  body{color:var(--ink);font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;letter-spacing:.03em;padding:28px 28px 24px;-webkit-font-smoothing:antialiased}
+  input,button{font-family:inherit;letter-spacing:inherit}
+  button{cursor:pointer}
+  button:focus-visible{outline:2px solid var(--kcal);outline-offset:2px}
+  input:focus{outline:none;border-bottom-color:var(--kcal)}
+
+  .wrap{max-width:700px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+  .label{font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--sub)}
+  .topbar{display:flex;justify-content:flex-end;margin-bottom:-8px}
+  .theme-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--unbd);border-radius:8px;background:transparent;color:var(--sub);padding:0}
+
+  .inputs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+  .field{display:flex;flex-direction:column;gap:2px}
+  .field input{min-height:40px;border:0;border-bottom:1px solid var(--uline);background:transparent;padding:0;font-size:22px;font-weight:400;color:var(--ink);width:100%}
+
+  .group{display:flex;flex-direction:column;gap:8px}
+  .sex{max-width:320px}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .opt{border:1px solid var(--unbd);border-radius:8px;background:transparent;color:var(--ink);font-weight:400}
+  .opt[aria-pressed="true"]{background:var(--selbg);border-color:var(--selbd);color:var(--selfg);font-weight:500}
+  .sex .opt{min-height:44px;font-size:14px}
+  .act .opt{min-height:60px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .act .opt b{font-size:15px;font-weight:inherit}
+  .act .opt small{font-size:11px;line-height:1.3;color:var(--sub)}
+  .act .opt[aria-pressed="true"] small{color:var(--selsub)}
+
+  .split{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end;padding-top:20px;border-top:1px solid var(--line)}
+  .split > div{flex:1 1 240px;display:flex;flex-direction:column}
+  .big{display:flex;align-items:baseline;gap:8px}
+  .kcal{font-weight:400;font-size:80px;line-height:1;letter-spacing:-.01em;color:var(--kcal)}
+  .unit{font-size:16px;color:var(--sub)}
+  .rows{font-size:14px}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row span:first-child{color:var(--sub)}
+  .row span:last-child{font-weight:500}
+  .row input{min-height:28px;border:0;border-bottom:1px solid var(--uline);background:transparent;padding:0;font-size:14px;color:var(--ink);letter-spacing:0}
+  .warn{margin:0;font-size:13px;line-height:1.5;color:var(--warn);font-weight:500}
+
+  .macros{display:flex;flex-direction:column;gap:14px;padding-top:20px;border-top:1px solid var(--line)}
+  .bar{display:flex;height:6px;border-radius:2px;overflow:hidden;background:var(--bar)}
+  .bar div{transition:width .3s ease}
+  .mgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .m{display:flex;flex-direction:column;gap:2px;padding:0 12px;border-left:1px solid var(--line)}
+  .m:first-child{padding-left:0;border-left:0}
+  .m .g{font-size:38px;font-weight:400;line-height:1.1}
+  .m .g small{font-size:14px;margin-left:2px;color:var(--sub)}
+  .m .s{font-size:12px;color:var(--sub)}
+  .dday{font-size:64px;font-weight:500;line-height:1;letter-spacing:-.01em;color:var(--dday)}
+  [hidden]{display:none !important}
+
+  @media (max-width:520px){
+    body{padding:20px 16px}
+    .inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .act .grid4{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kcal{font-size:64px}
+    .m .g{font-size:30px}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="topbar">
+    <button type="button" class="theme-btn" id="themeBtn" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+      <svg id="icoSun" style="display:none" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      <svg id="icoMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    </button>
+  </div>
+
+  <div class="inputs">
+    <label class="field"><span class="label">나이 (세)</span><input id="age" type="number" inputmode="numeric" value="22"></label>
+    <label class="field"><span class="label">키 (cm)</span><input id="height" type="number" inputmode="decimal" value="163"></label>
+    <label class="field"><span class="label">현재 체중 (kg)</span><input id="weight" type="number" inputmode="decimal" step="0.1" value="60"></label>
+    <label class="field"><span class="label">목표 체중 (kg)</span><input id="goal" type="number" inputmode="decimal" step="0.1" value="54"></label>
+  </div>
+
+  <div class="group sex">
+    <span class="label">성별</span>
+    <div class="grid2" id="sex">
+      <button type="button" class="opt" data-v="F" aria-pressed="true">여성</button>
+      <button type="button" class="opt" data-v="M" aria-pressed="false">남성</button>
+    </div>
+  </div>
+
+  <div class="group act">
+    <span class="label">일주일 운동 횟수</span>
+    <div class="grid4" id="act">
+      <button type="button" class="opt" data-v="1.2" aria-pressed="false"><b>주 0회</b><small>거의 앉아서 생활</small></button>
+      <button type="button" class="opt" data-v="1.375" aria-pressed="true"><b>주 1~2회</b><small>가벼운 운동</small></button>
+      <button type="button" class="opt" data-v="1.55" aria-pressed="false"><b>주 3~4회</b><small>규칙적인 운동</small></button>
+      <button type="button" class="opt" data-v="1.725" aria-pressed="false"><b>주 5회 이상</b><small>거의 매일 운동</small></button>
+    </div>
+  </div>
+
+  <section class="split">
+    <div style="gap:6px">
+      <span class="label">하루 목표 섭취량</span>
+      <div class="big"><span class="kcal" id="target">0</span><span class="unit">kcal</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><span>기초대사량</span><span><span id="bmr">0</span> kcal</span></div>
+      <div class="row"><span>하루 소모량</span><span><span id="tdee">0</span> kcal</span></div>
+      <div class="row"><span>하루 적자</span><span>−<span id="deficit">0</span> kcal</span></div>
+    </div>
+  </section>
+  <p class="warn" id="floor" hidden></p>
+
+  <section class="macros">
+    <div class="bar"><div id="barC" style="background:var(--c1)"></div><div id="barP" style="background:var(--c2)"></div><div id="barF" style="background:var(--c3)"></div></div>
+    <div class="mgrid">
+      <div class="m"><span class="label">탄수화물</span><span class="g"><span id="gC">0</span><small>g</small></span><span class="s" id="sC"></span></div>
+      <div class="m"><span class="label">단백질</span><span class="g"><span id="gP">0</span><small>g</small></span><span class="s" id="sP"></span></div>
+      <div class="m"><span class="label">지방</span><span class="g"><span id="gF">0</span><small>g</small></span><span class="s" id="sF"></span></div>
+    </div>
+  </section>
+
+  <section class="split">
+    <div style="gap:6px">
+      <span class="label">목표까지</span>
+      <div class="big" style="gap:10px"><span class="dday">D-<span id="days">0</span></span><span class="unit" style="font-size:14px" id="alt"></span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><span>예상 달성일</span><span id="end">-</span></div>
+      <label class="row"><span>시작일</span><input id="start" type="date"></label>
+    </div>
+  </section>
+  <p class="warn" id="warn" hidden></p>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return Math.round(n).toLocaleString('ko-KR'); };
+  var KEY = 'kcal-calc-v1', TKEY = 'kcal-calc-theme';
+  var today = (function () { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); })();
+  var state = { sex: 'F', age: '22', height: '163', weight: '60', goal: '54', af: 1.375, start: today };
+
+  // 저장값 불러오기
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) for (var k in state) if (saved[k] != null && saved[k] !== '') state[k] = saved[k]; } catch (e) {}
+  if ([1.2, 1.375, 1.55, 1.725].indexOf(+state.af) < 0) state.af = 1.725;
+  ['age', 'height', 'weight', 'goal', 'start'].forEach(function (k) { $(k).value = state[k]; });
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function press(groupId, val) {
+    Array.prototype.forEach.call(document.querySelectorAll('#' + groupId + ' .opt'), function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.v === String(val)));
+    });
+  }
+
+  function render() {
+    var age = +state.age, h = +state.height, w = +state.weight, g = +state.goal, af = +state.af;
+    var ok = age > 0 && h > 0 && w > 0;
+    var bmr = ok ? Math.round(10 * w + 6.25 * h - 5 * age + (state.sex === 'M' ? 5 : -161)) : 0;
+    var tdee = Math.round(bmr * af);
+    var floor = state.sex === 'M' ? 1500 : 1200;
+    var raw = Math.round(tdee - 0.5 * 1100);           // 주 0.5kg 감량 기준
+    var target = ok ? Math.max(raw, floor) : 0;
+    var deficit = Math.max(0, tdee - target);
+    var weekly = Math.round(deficit * 7 / 7700 * 100) / 100;
+    var pro = Math.round(w * 1.6), fat = Math.round(target * 0.25 / 9);
+    var carb = Math.max(0, Math.round((target - pro * 4 - fat * 9) / 4));
+    var kc = carb * 4, kp = pro * 4, kf = fat * 9, tot = (kc + kp + kf) || 1;
+
+    $('target').textContent = fmt(target); $('bmr').textContent = fmt(bmr); $('tdee').textContent = fmt(tdee); $('deficit').textContent = fmt(deficit);
+    var fl = $('floor');
+    if (ok && raw < floor) { fl.textContent = '주 0.5kg 감량 기준으로는 ' + fmt(raw) + 'kcal가 되어 하한선 ' + fmt(floor) + 'kcal를 적용했어요. 감량 속도는 주 ' + weekly + 'kg입니다.'; fl.hidden = false; }
+    else fl.hidden = true;
+
+    $('barC').style.width = (kc / tot * 100) + '%'; $('barP').style.width = (kp / tot * 100) + '%'; $('barF').style.width = (kf / tot * 100) + '%';
+    $('gC').textContent = carb; $('gP').textContent = pro; $('gF').textContent = fat;
+    $('sC').textContent = fmt(kc) + 'kcal · ' + Math.round(kc / tot * 100) + '%';
+    $('sP').textContent = fmt(kp) + 'kcal · ' + Math.round(kp / tot * 100) + '%';
+    $('sF').textContent = fmt(kf) + 'kcal · ' + Math.round(kf / tot * 100) + '%';
+
+    var need = Math.max(0, Math.round((w - g) * 10) / 10);
+    var days = deficit > 0 ? Math.ceil(need * 7700 / deficit) : 0;
+    var sd = new Date((state.start || today) + 'T00:00:00'); if (isNaN(sd)) sd = new Date();
+    var ed = new Date(sd); ed.setDate(ed.getDate() + days);
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    $('days').textContent = fmt(days);
+    $('alt').textContent = '약 ' + Math.round(days / 7) + '주';
+    $('end').textContent = days > 0 ? ed.getFullYear() + '.' + pad(ed.getMonth() + 1) + '.' + pad(ed.getDate()) : '-';
+
+    var bmiG = ok && g > 0 ? g / Math.pow(h / 100, 2) : 0, warn = '';
+    if (!ok || !(g > 0)) warn = '나이·키·체중을 모두 입력해 주세요.';
+    else if (g >= w) warn = '목표 체중이 현재 체중보다 낮아야 기간이 계산됩니다.';
+    else if (bmiG < 18.5) warn = '목표 체중의 BMI가 ' + bmiG.toFixed(1) + '로 저체중 기준(18.5) 미만입니다.';
+    $('warn').textContent = warn; $('warn').hidden = !warn;
+
+    press('sex', state.sex); press('act', +state.af);
+    save();
+  }
+
+  ['age', 'height', 'weight', 'goal', 'start'].forEach(function (k) {
+    $(k).addEventListener('input', function (e) { state[k] = e.target.value; render(); });
+  });
+  $('sex').addEventListener('click', function (e) { var b = e.target.closest('.opt'); if (b) { state.sex = b.dataset.v; render(); } });
+  $('act').addEventListener('click', function (e) { var b = e.target.closest('.opt'); if (b) { state.af = +b.dataset.v; render(); } });
+
+  // 다크 모드
+  function syncTheme() {
+    var dark = document.documentElement.className === 't-dark';
+    $('icoSun').style.display = dark ? '' : 'none'; $('icoMoon').style.display = dark ? 'none' : '';
+    var label = dark ? '라이트 모드로 전환' : '다크 모드로 전환';
+    $('themeBtn').setAttribute('aria-label', label); $('themeBtn').title = label;
+  }
+  $('themeBtn').addEventListener('click', function () {
+    var t = document.documentElement.className === 't-dark' ? 'light' : 'dark';
+    document.documentElement.className = 't-' + t;
+    try { localStorage.setItem(TKEY, t); } catch (e) {}
+    syncTheme();
+  });
+
+  syncTheme(); render();
+})();
+</script>
+</body>
+</html>
